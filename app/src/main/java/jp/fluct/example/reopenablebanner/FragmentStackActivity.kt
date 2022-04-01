@@ -14,8 +14,10 @@ import jp.fluct.example.reopenablebanner.databinding.FragmentStackActivityBindin
 import jp.fluct.example.reopenablebanner.databinding.FragmentStackFragmentBinding
 import jp.fluct.fluctsdk.FluctAdView
 import jp.fluct.fluctsdk.FluctErrorCode
+import java.lang.IllegalStateException
+import kotlin.reflect.KClass
 
-class FragmentStackActivity : AppCompatActivity() {
+abstract class AbsFragmentStackActivity<T : AbsFragmentStackActivity.AbsMyFragment> : AppCompatActivity() {
 
     private val BACKSTACK_NAME = null
     private lateinit var binding: FragmentStackActivityBinding
@@ -30,11 +32,13 @@ class FragmentStackActivity : AppCompatActivity() {
             appendLog("onClick")
 
             supportFragmentManager.commit {
-                replace<MyFragment>(binding.container.id)
+                replace(binding.container.id, getFragmentClass().java, null)
                 addToBackStack(BACKSTACK_NAME)
             }
         }
     }
+
+    abstract fun getFragmentClass(): KClass<T>
 
     override fun onBackPressed() {
         if (supportFragmentManager.backStackEntryCount >= 1) {
@@ -57,7 +61,7 @@ class FragmentStackActivity : AppCompatActivity() {
         }
     }
 
-    class MyFragment : Fragment() {
+    abstract class AbsMyFragment : Fragment() {
 
         private val TAG = "MyFragment"
 
@@ -78,24 +82,43 @@ class FragmentStackActivity : AppCompatActivity() {
         override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
             appendLog("onViewCreated")
 
+            if (binding.container.childCount > 0) {
+                throw IllegalStateException("Already attached")
+            }
+
             binding.container.addView(
-                FluctAdView(
-                    requireContext(),
-                    Consts.GROUP_ID,
-                    Consts.UNIT_ID,
-                    Consts.AD_SIZE,
-                    null,
-                    listener
-                ).apply {
-                    loadAd()
-                }
+                createBanner()
             )
         }
 
-        private fun appendLog(msg: String) {
-            (activity as? FragmentStackActivity)
+        abstract fun createBanner(): View
+
+        protected fun appendLog(msg: String) {
+            (activity as? AbsFragmentStackActivity<*>)
                 ?.appendLog(msg)
                 ?: Log.w(TAG, msg)
+        }
+
+    }
+
+}
+
+
+class FragmentStackActivity : AbsFragmentStackActivity<FragmentStackActivity.MyFragment>() {
+
+    class MyFragment : AbsMyFragment() {
+
+        override fun createBanner(): View {
+            return FluctAdView(
+                requireContext(),
+                Consts.GROUP_ID,
+                Consts.UNIT_ID,
+                Consts.AD_SIZE,
+                null,
+                listener
+            ).apply {
+                loadAd()
+            }
         }
 
         private val listener = object : FluctAdView.Listener {
@@ -118,6 +141,10 @@ class FragmentStackActivity : AppCompatActivity() {
 
         }
 
+    }
+
+    override fun getFragmentClass(): KClass<MyFragment> {
+        return MyFragment::class
     }
 
 }

@@ -4,11 +4,12 @@ import android.annotation.SuppressLint
 import android.os.Build
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.view.View
 import jp.fluct.example.reopenablebanner.databinding.BasicLifecycleActivityBinding
 import jp.fluct.fluctsdk.FluctAdView
 import jp.fluct.fluctsdk.FluctErrorCode
 
-class BasicLifecycleActivity : AppCompatActivity() {
+abstract class AbsBasicLifecycleActivity : AppCompatActivity() {
 
     private lateinit var binding: BasicLifecycleActivityBinding
 
@@ -38,16 +39,7 @@ class BasicLifecycleActivity : AppCompatActivity() {
         appendLog("addBanner")
 
         binding.ads.addView(
-            FluctAdView(
-                this,
-                Consts.GROUP_ID,
-                Consts.UNIT_ID,
-                Consts.AD_SIZE,
-                null,
-                listener
-            ).apply {
-                loadAd()
-            }
+            createBanner()
         )
     }
 
@@ -71,7 +63,7 @@ class BasicLifecycleActivity : AppCompatActivity() {
         appendLog("onBackPressed")
     }
 
-    private fun appendLog(msg: String) {
+    protected fun appendLog(msg: String) {
         binding.logs.apply {
             text = StringBuilder(text)
                 .apply {
@@ -81,6 +73,25 @@ class BasicLifecycleActivity : AppCompatActivity() {
                 }
                 .append(msg)
                 .toString()
+        }
+    }
+
+    abstract fun createBanner(): View
+
+}
+
+class BasicLifecycleActivity : AbsBasicLifecycleActivity() {
+
+    override fun createBanner(): View {
+        return FluctAdView(
+            this,
+            Consts.GROUP_ID,
+            Consts.UNIT_ID,
+            Consts.AD_SIZE,
+            null,
+            listener
+        ).apply {
+            loadAd()
         }
     }
 
